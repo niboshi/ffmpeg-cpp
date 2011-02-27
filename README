@@ -1,0 +1,5 @@
+ffmpeg-cpp is a C++ layer for FFmpeg.
+
+This project is primarily amied at my own personal use, so it is likely that
+features are insufficient and management is poor.
+
