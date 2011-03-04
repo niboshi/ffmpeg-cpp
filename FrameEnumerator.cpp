@@ -53,7 +53,6 @@ FrameEnumerator::reset()
 {
     mLastIndex = -1;
     mLastTimestamp = AV_NOPTS_VALUE;
-    av_seek_frame(mMediaDecoder->getFormatContext(), -1, 0, 0);
 }
 
 int
