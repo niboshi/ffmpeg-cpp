@@ -268,9 +268,9 @@ MediaDecoder::decodeVideo(AVPacket* packet, uint8_t* buffer, int bufferSize, dou
     int             result = 0;
     double          timestamp;
 
-    *outTimestamp = 0.0;
-    *outDataSize = 0;
-    *outSkipped = false;
+    if (outTimestamp) { *outTimestamp = 0.0; }
+    if (outDataSize)  { *outDataSize = 0; }
+    if (outSkipped)   { *outSkipped = false; }
 
 
     // Decode the next frame
@@ -281,7 +281,7 @@ MediaDecoder::decodeVideo(AVPacket* packet, uint8_t* buffer, int bufferSize, dou
     }
 
     if (timestamp < thresholdTimestamp) {
-        *outSkipped = true;
+        if (outSkipped) { *outSkipped = true; }
         result = 1;
         goto CLEANUP;
     }
@@ -293,8 +293,8 @@ MediaDecoder::decodeVideo(AVPacket* packet, uint8_t* buffer, int bufferSize, dou
         goto CLEANUP;
     }
 
-    *outTimestamp  = timestamp;
-    *outDataSize   = mScaleHeight * mScaleStride;
+    if (outTimestamp) { *outTimestamp  = timestamp; }
+    if (outDataSize)  { *outDataSize   = mScaleHeight * mScaleStride; }
 
 CLEANUP:
     return result;
