@@ -1,17 +1,7 @@
 #ifndef MEDIA_DECODER_H_
 #define MEDIA_DECODER_H_
 
-#ifndef __STDC_CONSTANT_MACROS
-#define __STDC_CONSTANT_MACROS
-#endif
-
-extern "C" {
-#include <libavutil/avutil.h>
-#include <libavformat/avformat.h>
-#include <libavcodec/avcodec.h>
-#include <libswscale/swscale.h>
-}
-
+#include "libav.hpp"
 
 typedef enum {
     Stride_Tight,
@@ -82,6 +72,7 @@ public:
 
     // decode
     int seek(double timestamp);
+    int seek(int streamIndex, int64_t timestamp);
     int seekToIndex(int streamIndex, int index);
     int decodeAudio(AVPacket* packet, uint8_t* buffer, int bufferSize, double* outTimestamp, int* outDataSize);
     int decodeVideo(AVPacket* packet, uint8_t* buffer, int bufferSize, double thresholdTimestamp, double* outTimestamp, int* outDataSize, bool* outSkipped);

@@ -1,5 +1,7 @@
 #include "MediaDecoder.hpp"
 
+#include <cassert>
+
 void
 MediaDecoder::initFfmpeg()
 {
@@ -68,18 +70,18 @@ MediaDecoder::openFile(const char* filename)
 	for (int i = 0; i < streamCount; ++i) {
 		if (0 > (intRet = this->prepareStream(i))) {
 			this->outputMessage(0, "prepareStream() failed: ret=%d", intRet);
-			return intRet;
 		}
 		if (mFirstVideoStreamIndex == -1 && mFormatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
 			mFirstVideoStreamIndex = i;
 		}
 	}
 	
-	if (mFirstVideoStreamIndex != -1) {
-		AVCodecContext* codecContext = mFormatContext->streams[mFirstVideoStreamIndex]->codec;
-		this->setScaleParameters(codecContext->width, codecContext->height, PIX_FMT_RGB32, Stride_4bytes);
-	}
-	
+    if (mFirstVideoStreamIndex != -1) {
+        this->outputMessage(0, "Video stream is %d", mFirstVideoStreamIndex);
+        AVCodecContext* codecContext = mFormatContext->streams[mFirstVideoStreamIndex]->codec;
+        this->setScaleParameters(codecContext->width, codecContext->height, PIX_FMT_RGB32, Stride_4bytes);
+    }
+    
 	return 0;
 }
 
@@ -117,6 +119,7 @@ MediaDecoder::setScaleParameters(int width, int height, PixelFormat pixelFormat,
 //		SWS_BILINEAR,
 		SWS_FAST_BILINEAR,
 		NULL, NULL, NULL);
+    
 	if (!mSwsContext) {
         this->outputMessage(0, "sws_getContext failed.");
         return -1;
@@ -148,31 +151,31 @@ MediaDecoder::setScaleParameters(int width, int height, PixelFormat pixelFormat,
 }
 
 int
+MediaDecoder::seek(int streamIndex, int64_t timestamp)
+{
+    return av_seek_frame(mFormatContext, streamIndex, timestamp, 0);
+}
+
+int
 MediaDecoder::seek(double timestamp)
 {
-    int intRet;
-    int streamCount = this->getStreamCount();
-    int failCount = 0;
-    for (int i = 0; i < streamCount; ++i) {
-        double timeBase = av_q2d(mFormatContext->streams[i]->time_base);
-        int64_t ts = static_cast<int64_t>(timestamp / timeBase);
-        intRet = av_seek_frame(mFormatContext, i, ts, 0);
-        if (0 > intRet) {
-            failCount ++;
-        }
-    }
-	return failCount;
+    return this->seek(-1, static_cast<uint64_t>(timestamp * AV_TIME_BASE));
 }
 
 int
 MediaDecoder::seekToIndex(int streamIndex, int index) {
     AVStream* stream = this->getStream(streamIndex);
-    if (!stream) { return -1; }
+    if (!stream) {
+        this->outputMessage(0, "Stream index %d not found.", streamIndex);
+        return -1; }
     
     AVIndexEntry* entries = stream->index_entries;
-    if (!entries) { return -1; }
+    if (!entries) {
+        this->outputMessage(0, "Tried to seek by index, but there is no index entries.");
+        return -1; }
 
-    if (0 < index || index <= stream->nb_index_entries) {
+    if (index < 0 || stream->nb_index_entries <= index) {
+        this->outputMessage(0, "Index out of bound: %d / %d", index, stream->nb_index_entries);
         return -1;
     }
 
@@ -234,6 +237,10 @@ MediaDecoder::decodeVideoFrame(AVPacket* packet, AVFrame* outFrame, double* outT
 int
 MediaDecoder::scaleVideoFrame(AVFrame* frame, uint8_t* buffer, int bufferSize)
 {
+    if (!mSwsContext) {
+        this->outputMessage(0, "sws context is not initialized.");
+        return -1; }
+    
     int      intRet;
     uint8_t* data[]     = { (uint8_t*)buffer, NULL, NULL, NULL };
     int      lineSize[] = { mScaleStride, 0, 0, 0 };
@@ -278,7 +285,6 @@ MediaDecoder::decodeVideo(AVPacket* packet, uint8_t* buffer, int bufferSize, dou
         result = 1;
         goto CLEANUP;
     }
-
 
     // scale and transform
     intRet = this->scaleVideoFrame(mFrame, buffer, bufferSize);
@@ -343,9 +349,9 @@ MediaDecoder::prepareStream(int streamIndex)
 	AVStream*		stream			= mFormatContext->streams[streamIndex];
 	AVCodecContext*	codecContext	= stream->codec;
 	AVCodec*		codec			= avcodec_find_decoder(codecContext->codec_id);
-	
+
 	if (!codec) {
-		this->outputMessage(0, "Failed to find decoder: codec_id=%d", codecContext->codec_id);
+		this->outputMessage(0, "Failed to find decoder: streamIndex=%d codecId=%d codecType=%d", streamIndex, codecContext->codec_id, codecContext->codec_type);
 		return -1;
 	}
 	
