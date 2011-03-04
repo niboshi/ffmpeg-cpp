@@ -5,28 +5,28 @@
 void
 MediaDecoder::initFfmpeg()
 {
-	//av_log_set_callback(NULL);
-	avcodec_register_all();
-	av_register_all();
+    //av_log_set_callback(NULL);
+    avcodec_register_all();
+    av_register_all();
 }
 
 void
 MediaDecoder::outputMessage(int level, const char* format, ...)
 {
-	va_list vl;
-	va_start(vl, format);
-	
-	vprintf(format, vl);
+    va_list vl;
+    va_start(vl, format);
+    
+    vprintf(format, vl);
     printf("\n");
-	
-	va_end(vl);
+    
+    va_end(vl);
 }
 
 MediaDecoder::MediaDecoder()
-	: mFormatContext(NULL),
-      mSwsContext(NULL),
-      mFirstVideoStreamIndex(-1),
-      mScaleWidth(-1), mScaleHeight(-1), mScaleStride(-1), mScalePixelFormat(PIX_FMT_NONE)
+  : mFormatContext(NULL),
+    mSwsContext(NULL),
+    mFirstVideoStreamIndex(-1),
+    mScaleWidth(-1), mScaleHeight(-1), mScaleStride(-1), mScalePixelFormat(PIX_FMT_NONE)
 {
     mFrame = avcodec_alloc_frame();
 }
@@ -51,38 +51,38 @@ MediaDecoder::~MediaDecoder()
 int
 MediaDecoder::openFile(const char* filename)
 {
-	int intRet;
+    int intRet;
 	
-	// open the input file.
-	if (0 > (intRet = av_open_input_file(&mFormatContext, filename, NULL, 0, NULL))) {
-		this->outputMessage(0, "Could not open input file: ret=%d file=%s", intRet, filename);
-		return intRet;
-	}
-	
-	if (0 > (intRet = av_find_stream_info(mFormatContext))) {
-		this->outputMessage(0, "av_find_stream_info() failed: ret=%d", intRet);
-		return intRet;
-	}
-	
-	int streamCount = mFormatContext->nb_streams;
-	
-	// prepare the streams.
-	for (int i = 0; i < streamCount; ++i) {
-		if (0 > (intRet = this->prepareStream(i))) {
-			this->outputMessage(0, "prepareStream() failed: ret=%d", intRet);
-		}
-		if (mFirstVideoStreamIndex == -1 && mFormatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
-			mFirstVideoStreamIndex = i;
-		}
-	}
-	
+    // open the input file.
+    if (0 > (intRet = av_open_input_file(&mFormatContext, filename, NULL, 0, NULL))) {
+        this->outputMessage(0, "Could not open input file: ret=%d file=%s", intRet, filename);
+        return intRet;
+    }
+    
+    if (0 > (intRet = av_find_stream_info(mFormatContext))) {
+        this->outputMessage(0, "av_find_stream_info() failed: ret=%d", intRet);
+        return intRet;
+    }
+    
+    int streamCount = mFormatContext->nb_streams;
+    
+    // prepare the streams.
+    for (int i = 0; i < streamCount; ++i) {
+        if (0 > (intRet = this->prepareStream(i))) {
+            this->outputMessage(0, "prepareStream() failed: ret=%d", intRet);
+        }
+        if (mFirstVideoStreamIndex == -1 && mFormatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+            mFirstVideoStreamIndex = i;
+        }
+    }
+    
     if (mFirstVideoStreamIndex != -1) {
         this->outputMessage(0, "Video stream is %d", mFirstVideoStreamIndex);
         AVCodecContext* codecContext = mFormatContext->streams[mFirstVideoStreamIndex]->codec;
         this->setScaleParameters(codecContext->width, codecContext->height, PIX_FMT_RGB32, Stride_4bytes);
     }
     
-	return 0;
+    return 0;
 }
 
 static int
@@ -106,46 +106,46 @@ MediaDecoder::setScaleParameters(int width, int height, PixelFormat pixelFormat,
         this->outputMessage(0, "No video stream found. Cannot set scale parameters.");
         return -1;
     }
-	
-	mSwsContext = sws_getCachedContext(
-		mSwsContext,
-		codecContext->width,
-		codecContext->height,
-		codecContext->pix_fmt,
+    
+    mSwsContext = sws_getCachedContext(
+        mSwsContext,
+        codecContext->width,
+        codecContext->height,
+        codecContext->pix_fmt,
         width,
         height,
         pixelFormat,
-//		SWS_LANCZOS,
-//		SWS_BILINEAR,
-		SWS_FAST_BILINEAR,
-		NULL, NULL, NULL);
+//      SWS_LANCZOS,
+//      SWS_BILINEAR,
+        SWS_FAST_BILINEAR,
+        NULL, NULL, NULL);
     
-	if (!mSwsContext) {
+    if (!mSwsContext) {
         this->outputMessage(0, "sws_getContext failed.");
         return -1;
     }
-	
-	// calc stride
-	int tightLineSize = avpicture_get_size(pixelFormat, width, 1);
+        
+    // calc stride
+    int tightLineSize = avpicture_get_size(pixelFormat, width, 1);
     int stride = -1;
-	switch (strideMode) {
-	case Stride_Tight:
-		stride = tightLineSize;
-		break;
-	case Stride_PowerOfTwo:
-		stride = getSmallestPowerOfTwo(tightLineSize);
-		break;
-	case Stride_4bytes:
-		stride = ((tightLineSize + 3) >> 2) << 2;
-		break;
-	default:
-		this->outputMessage(0, "Unknown stride mode: %d", strideMode);
+    switch (strideMode) {
+    case Stride_Tight:
+        stride = tightLineSize;
+        break;
+    case Stride_PowerOfTwo:
+        stride = getSmallestPowerOfTwo(tightLineSize);
+        break;
+    case Stride_4bytes:
+        stride = ((tightLineSize + 3) >> 2) << 2;
+        break;
+    default:
+        this->outputMessage(0, "Unknown stride mode: %d", strideMode);
         return -1;
-	}
-
+    }
+    
     mScaleStride = stride;
-	mScaleWidth = width;
-	mScaleHeight = height;
+    mScaleWidth = width;
+    mScaleHeight = height;
     mScalePixelFormat = pixelFormat;
     return 0;
 }
@@ -215,8 +215,8 @@ MediaDecoder::getVideoTimestamp(AVPacket* packet, AVFrame* frame)
 int
 MediaDecoder::decodeVideoFrame(AVPacket* packet, AVFrame* outFrame, double* outTimestamp)
 {
-    int      intRet;
-    int      gotPicture;
+    int             intRet;
+    int             gotPicture;
     int             streamIndex = packet->stream_index;
     AVCodecContext* codecContext = mFormatContext->streams[streamIndex]->codec;
 
@@ -344,40 +344,40 @@ MediaDecoder::decodeAudio(AVPacket* packet, uint8_t* buffer, int bufferSize, dou
 int
 MediaDecoder::prepareStream(int streamIndex)
 {
-	int intRet;
-	
-	AVStream*		stream			= mFormatContext->streams[streamIndex];
-	AVCodecContext*	codecContext	= stream->codec;
-	AVCodec*		codec			= avcodec_find_decoder(codecContext->codec_id);
+    int intRet;
+    
+    AVStream*       stream          = mFormatContext->streams[streamIndex];
+    AVCodecContext* codecContext    = stream->codec;
+    AVCodec*        codec           = avcodec_find_decoder(codecContext->codec_id);
+    
+    if (!codec) {
+        this->outputMessage(0, "Failed to find decoder: streamIndex=%d codecId=%d codecType=%d", streamIndex, codecContext->codec_id, codecContext->codec_type);
+        return -1;
+    }
+    
+    // Handle truncated bitstreams
+    if (codec->capabilities & CODEC_CAP_TRUNCATED) {
+        codecContext->flags |= CODEC_FLAG_TRUNCATED;
+    }
+    
+    codecContext->debug             = 0;
+    codecContext->debug_mv          = 0;
+    codecContext->lowres            = 0;  // lowres decoding: 1->1/2   2->1/4
+    codecContext->workaround_bugs   = 1;
+    codecContext->idct_algo         = FF_IDCT_AUTO;
+    codecContext->skip_frame        = AVDISCARD_DEFAULT;
+    codecContext->skip_idct         = AVDISCARD_DEFAULT;
+    codecContext->skip_loop_filter  = AVDISCARD_DEFAULT;
+    codecContext->error_recognition = FF_ER_CAREFUL;
+    codecContext->error_concealment = FF_EC_GUESS_MVS | FF_EC_DEBLOCK;
 
-	if (!codec) {
-		this->outputMessage(0, "Failed to find decoder: streamIndex=%d codecId=%d codecType=%d", streamIndex, codecContext->codec_id, codecContext->codec_type);
-		return -1;
-	}
-	
-	// Handle truncated bitstreams
-	if (codec->capabilities & CODEC_CAP_TRUNCATED) {
-		codecContext->flags |= CODEC_FLAG_TRUNCATED;
-	}
-	
-	codecContext->debug				= 0;
-	codecContext->debug_mv			= 0;
-	codecContext->lowres			= 0;  // lowres decoding: 1->1/2   2->1/4
-	codecContext->workaround_bugs	= 1;
-	codecContext->idct_algo			= FF_IDCT_AUTO;
-	codecContext->skip_frame		= AVDISCARD_DEFAULT;
-	codecContext->skip_idct			= AVDISCARD_DEFAULT;
-	codecContext->skip_loop_filter	= AVDISCARD_DEFAULT;
-	codecContext->error_recognition	= FF_ER_CAREFUL;
-	codecContext->error_concealment	= FF_EC_GUESS_MVS | FF_EC_DEBLOCK;
-	
-	// open the codec.
-	if (0 > (intRet = avcodec_open(codecContext, codec))) {
-		this->outputMessage(0, "avcodec_open() failed: %d", intRet);
-		return intRet;
-	}
-	
-	return 0;
+    // open the codec.
+    if (0 > (intRet = avcodec_open(codecContext, codec))) {
+        this->outputMessage(0, "avcodec_open() failed: %d", intRet);
+        return intRet;
+    }
+    
+    return 0;
 }
 
 
